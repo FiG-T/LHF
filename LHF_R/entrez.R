@@ -55,13 +55,25 @@ mitomap_search$web_history
 
 mtDNA_summary <- entrez_summary(
   db = "nucleotide", 
-  id = mtDNA_search$ids    # list of ids 
+  id = mitomap_acc_list_v[1:20]    # list of ids 
   )
 mtDNA_summary
 
-extract_from_esummary(mtDNA_summary, "uid") # retrieve values from the above summary
+subnames<- extract_from_esummary(mtDNA_summary, "subname") # retrieve values from the above summary
   # taxid :  number associated with taxa (9606 = sapiens)
   # subname: notes, inc. location data
+
+mitotable<- data.frame(notes = subnames)
+head(mitotable)
+
+library(stringr)
+library(tidyr)
+mitotable_temp <- separate(
+  mitotable, notes, 
+  sep = "\\|",
+  into = c("sub_a", "sub_b", "sub_c", "sub_d")
+         )
+
 
 mitomap_summary <- entrez_summary(   
   db = "nucleotide",
@@ -76,14 +88,51 @@ extract_from_esummary(mitomap_summary, "uid")
 mitomap_acc <- entrez_fetch(    # to retrive the accession numbers: 
   db = "nucleotide",
   web_history = mitomap_search$web_history,  
-  rettype = "acc"
+  rettype = "gb"
   )
 class(mitomap_acc)
-write(mitomap_acc, file= "mitomap_acc_full.txt")  # stores 9998 files
+write(mitomap_acc, file= "mitomap_acc_full.txt")  # stores 9998 accession numbers
+
+mitomap_acc_full <- read.delim("mitomap_acc_test.txt")
+nrow(mitomap_acc_full)
+str(mitomap_acc_full)
 
 mitomap_acc_list <- read.delim("mitomap_acc_full.txt") 
+mitomap_acc_list_v <-mitomap_acc_full[,1]
+head(mitomap_acc_list_v)
+length(mitomap_acc_list_v)   # list of 71449 ACC numbers
 
 
+mitomap_gb <- entrez_fetch(
+  db = "nucleotide", 
+  id = mitomap_acc_list_v[1:5], 
+  rettype = "gb"
+)
+write(mitomap_gb, "mitomap_gb_test.txt", append = TRUE)
 
-##  Bringing in external GenBank IDs from the mitomap website: 
+#  attempting to write a loop... 
+#    using web history: 
+for( seq_start in seq(1,63500,50)){
+  recs <- entrez_fetch(
+    db ="nucleotide", 
+    web_history = mitomap_search$web_history,
+    rettype ="gb", 
+    retmax = 50, 
+    retstart=seq_start)
+  Sys.sleep(0.1)          # to ensure NCBI is not overloaded.
+  cat(recs, file="mitomap_gb_full.txt", append=TRUE)
+  cat(seq_start + 49, "GenBank files downloaded\r")
+}
+
+ # using stored ids 
+for( seq_start in seq(1,63500,2)){
+  recs <- entrez_fetch(
+    db ="nucleotide", 
+    id = mitomap_acc_list_v,
+    rettype ="gb", 
+    retmax = 500, 
+    retstart=seq_start)
+  cat(recs, file="mitomap_gb_full.txt", append=TRUE)
+  cat(seq_start + 4, "GenBank files downloaded\r")
+}
 
