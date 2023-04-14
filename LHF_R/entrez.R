@@ -1,4 +1,5 @@
 ### Project LHF - Attempting to use E-Utilities & Entrez 
+#   -----------
 
 #  After unsuccessful attempts to download the required GenBank files and sequences from
 #  the NCBI website interface I have decided to try and use the API (known as Entrez)... 
@@ -19,27 +20,70 @@ entrez_dbs()
 entrez_db_searchable("nucleotide")
   # list which features you can include in your search (here for the nucleotide database)
 
-mtDNA_search <- entrez_search(
+# ---------------------------------------------------------------------------------------
+
+mtDNA_search <- entrez_search(  # custom search 
   db = "nucleotide",
-  term = "(mitochondria[All Fields] OR mitochondrion[All Fields])
-  AND Homo sapiens[porgn] AND (15400[SLEN] : 17000[SLEN])"
+  term = "(mitochondrion[ALL Fields])
+  AND Homo sapiens[ORGN] AND (15400[SLEN] : 16600[SLEN])"
   )
+mtDNA_search$ids
+length(mtDNA_search$ids)
 
 mitomap_search <- entrez_search(
   db = "nucleotide",
   term = "(00000015400[SLEN] : 00000016600[SLEN]) AND Homo[Organism] AND mitochondrion
-  [FILT] NOT ((Homo sapiens subsp. 'Denisova'[Organism] OR Homo sp. Altai[All Fields]) 
-  OR (Homo sapiens subsp. 'Denisova'[Organism] OR Denisova hominin[All Fields]) OR
-  neanderthalensis[All Fields] OR heidelbergensis[All Fields] OR consensus[All Fields] 
-  OR (ancient[All Fields] AND (Homo sapiens[Organism] OR human[All Fields]) AND remains
-  [All Fields])) AND (15400[SLEN] : 17000[SLEN])"
-)
-  
-mtDNA_search$ids
+  [FILT] AND (15400[SLEN] : 17000[SLEN])",
+  use_history = TRUE
+  ) 
+  # This uses many some of the same search syntax from the mitomap website
+  # -------
+  # to exclude ancient Humans add:  "NOT ((Homo sapiens subsp. 'Denisova'[Organism] OR 
+  # Homo sp. Altai[All Fields]) OR (Homo sapiens subsp. 'Denisova'[Organism] OR Denisova 
+  # hominin[All Fields]) OR neanderthalensis[All Fields] OR heidelbergensis[All Fields] 
+  # OR consensus[All Fields] OR (ancient[All Fields] AND (Homo sapiens[Organism] OR human
+  # [All Fields]) AND remains[All Fields]))"
+
+mitomap_search$web_history
+
+
+##  Summary information for these searches can be retrieved in two steps: 
+#    1.  entrez_summary() :  this searches the database and stores the data in a list
+#    2.  extract_from_esummary()  : this retrieves specific values from within a particular 
+#        list
+#   Each summary search must have EITHER a list of ids OR a web_history link from a search. 
 
 mtDNA_summary <- entrez_summary(
   db = "nucleotide", 
-  id = mtDNA_search$ids
+  id = mtDNA_search$ids    # list of ids 
   )
 mtDNA_summary
-extract_from_esummary(mtDNA_summary, "moltype")
+
+extract_from_esummary(mtDNA_summary, "uid") # retrieve values from the above summary
+  # taxid :  number associated with taxa (9606 = sapiens)
+  # subname: notes, inc. location data
+
+mitomap_summary <- entrez_summary(   
+  db = "nucleotide",
+  web_history = mitomap_search$web_history   # using the web_history
+)
+extract_from_esummary(mitomap_summary, "uid") 
+   # the number of results returned is limited to the rettmax from the search above. 
+
+
+##  Fetch 
+
+mitomap_acc <- entrez_fetch(    # to retrive the accession numbers: 
+  db = "nucleotide",
+  web_history = mitomap_search$web_history,  
+  rettype = "acc"
+  )
+class(mitomap_acc)
+write(mitomap_acc, file= "mitomap_acc_full.txt")  # stores 9998 files
+
+mitomap_acc_list <- read.delim("mitomap_acc_full.txt") 
+
+
+
+##  Bringing in external GenBank IDs from the mitomap website: 
+
